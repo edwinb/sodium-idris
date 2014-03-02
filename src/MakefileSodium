@@ -1,0 +1,8 @@
+CFLAGS = `idris --include` 
+
+sodium_glue.o: sodium_glue.c sodium_glue.h
+
+clean: .PHONY
+	rm sodium_glue.o
+
+.PHONY:

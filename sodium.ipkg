@@ -1,0 +1,12 @@
+package sodium
+
+sourcedir = src
+modules = Crypto.RawSodium, Crypto.Sodium
+
+opts = "" 
+
+makefile = MakefileSodium
+
+objs = sodium_glue.o, sodium_glue.h
+libs = sodium
+

@@ -39,8 +39,18 @@ keyIdx (MkKey k) i = unsafePerformIO (do_getKeyIdx k i)
 setKeyIdx : Key -> Int -> Int -> IO ()
 setKeyIdx (MkKey k) i b = do_setKeyIdx k i b
 
--- freeKey : Key -> IO ()
--- freeKey (MkKey p) = do_freeKey p
+-- Nonces
+
+abstract data Nonce = MkNonce ManagedPtr
+
+newNonce : (len : Int) -> IO Nonce
+newNonce l = return $ MkNonce !(do_newNonce l)
+
+newNonceFromString : (str : String) -> IO Nonce
+newNonceFromString str = return $ MkNonce !(do_newNonceFromString str)
+
+setNonceIdx : Nonce -> Int -> Int -> IO ()
+setNonceIdx (MkNonce k) i b = do_setNonceIdx k i b
 
 -- An Encrypted box holds raw encrypted data, and its length
 abstract 
@@ -96,32 +106,32 @@ nonceLength = unsafePerformIO box_nonceLength
 
 -- Symmetric key encryption
 
-cryptoSecretBox : (plaintext : String) -> (nonce : String) ->
+cryptoSecretBox : (plaintext : String) -> (nonce : Nonce) ->
                   (key : Key) -> IO EncryptedBox
-cryptoSecretBox m n (MkKey k) 
+cryptoSecretBox m (MkNonce n) (MkKey k) 
     = case !(do_cryptoSecretBox m n k) of
            Just p => return (MkEnc p)
            Nothing => return EncFailed
 
-cryptoSecretBoxOpen : (ciphertext : EncryptedBox) -> (nonce : String) ->
+cryptoSecretBoxOpen : (ciphertext : EncryptedBox) -> (nonce : Nonce) ->
                       (key : Key) -> IO OpenBox
-cryptoSecretBoxOpen (MkEnc e) n (MkKey k) 
+cryptoSecretBoxOpen (MkEnc e) (MkNonce n) (MkKey k) 
     = case !(do_cryptoSecretBoxOpen e n k) of
            Just p => return (MkDec p)
            Nothing => return DecFailed
 
 -- Public key encryption
 
-cryptoBox : (plaintext : String) -> (nonce : String) ->
+cryptoBox : (plaintext : String) -> (nonce : Nonce) ->
             (pkey : Key) -> (skey : Key) -> IO EncryptedBox
-cryptoBox m n (MkKey pk) (MkKey sk)
+cryptoBox m (MkNonce n) (MkKey pk) (MkKey sk)
     = case !(do_cryptoBox m n pk sk) of
            Just p => return (MkEnc p)
            Nothing => return EncFailed
 
-cryptoBoxOpen : (ciphertext : EncryptedBox) -> (nonce : String) ->
+cryptoBoxOpen : (ciphertext : EncryptedBox) -> (nonce : Nonce) ->
                 (pkey : Key) -> (skey : Key) -> IO OpenBox
-cryptoBoxOpen (MkEnc e) n (MkKey pk) (MkKey sk)
+cryptoBoxOpen (MkEnc e) (MkNonce n) (MkKey pk) (MkKey sk)
     = case !(do_cryptoBoxOpen e n pk sk) of
            Just p => return (MkDec p)
            Nothing => return DecFailed

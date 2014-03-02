@@ -9,6 +9,11 @@ typedef struct {
 } Key;
 
 typedef struct {
+    unsigned char* nonce;
+    int nlen;
+} Nonce;
+
+typedef struct {
     Key* secret;
     Key* pub;
 } KeyPair;
@@ -45,19 +50,20 @@ int keyIdx(Key* k, int i);
 Key* mkKey(int len);
 void setKeyIdx(Key* k, int i, int v);
 
+Nonce* mkNonce(int len);
+Nonce* mkNonceFromString(char* n);
+void setNonceIdx(Nonce* n, int i, int v);
+
 // Free a key/value pair (but not the individual keys)
 void freeKeyPair(KeyPair* k);
 
-// Free memory allocated for a key
-void freeKey(Key* k);
-
 // Public/private key encryption
-Encrypted* do_crypto_box(char* m, char* n, Key* pkey, Key* skey);
-Decrypted* do_crypto_box_open(Encrypted* c, char* n, Key* pkey, Key* skey);
+Encrypted* do_crypto_box(char* m, Nonce* n, Key* pkey, Key* skey);
+Decrypted* do_crypto_box_open(Encrypted* c, Nonce* n, Key* pkey, Key* skey);
 
 // Symmetric key encryption
-Encrypted* do_crypto_secretbox(char* m, char* n, Key* key);
-Decrypted* do_crypto_secretbox_open(Encrypted* c, char* n, Key* key);
+Encrypted* do_crypto_secretbox(char* m, Nonce* n, Key* key);
+Decrypted* do_crypto_secretbox_open(Encrypted* c, Nonce* n, Key* key);
 
 // Get the string from a decrypted object
 char* getDec(Decrypted* dec);
@@ -74,9 +80,5 @@ int getEncByte(Encrypted *enc, int b);
 void setEncByte(Encrypted *enc, int i, int b);
 void* getEncData(Encrypted *enc);
 void setEncData(Encrypted *enc, void* buf);
-
-// Free encryption/decryption objects
-void freeEnc(Encrypted* enc);
-void freeDec(Decrypted* enc);
 
 #endif

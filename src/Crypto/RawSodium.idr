@@ -38,6 +38,21 @@ do_setKeyIdx : ManagedPtr -> Int -> Int -> IO ()
 do_setKeyIdx p i b 
      = mkForeign (FFun "setKeyIdx" [FManagedPtr, FInt, FInt] FUnit) p i b
 
+-- Create/read/write nonces
+
+do_newNonce : Int -> IO ManagedPtr
+do_newNonce len = do p <- mkForeign (FFun "mkNonce" [FInt] FPtr) len 
+                     return $ registerPtr p (len+16) 
+
+do_newNonceFromString : String -> IO ManagedPtr
+do_newNonceFromString s
+     = do p <- mkForeign (FFun "mkNonceFromString" [FString] FPtr) s
+          return $ registerPtr p (cast (length s) + 16) 
+
+do_setNonceIdx : ManagedPtr -> Int -> Int -> IO ()
+do_setNonceIdx p i b 
+     = mkForeign (FFun "setNonceIdx" [FManagedPtr, FInt, FInt] FUnit) p i b
+
 -- Making/reading boxes
 
 do_newBox : Int -> IO ManagedPtr
@@ -66,11 +81,11 @@ do_readBoxOpen p = mkForeign (FFun "getDec" [FManagedPtr] FString) p
 -- Symmetric keys
 
 do_cryptoSecretBox : (msg : String) -> 
-                     (nonce : String) -> 
+                     (nonce : ManagedPtr) -> 
                      (key : ManagedPtr) -> IO (Maybe ManagedPtr)
 do_cryptoSecretBox m n k 
    = do p <- mkForeign (FFun "do_crypto_secretbox" 
-                       [FString, FString, FManagedPtr] FPtr) m n k
+                       [FString, FManagedPtr, FManagedPtr] FPtr) m n k
         if !(nullPtr p) 
            then return Nothing
            else do boxlen <- mkForeign (FFun "getEncSize" [FPtr] FInt) p
@@ -78,11 +93,11 @@ do_cryptoSecretBox m n k
 
 
 do_cryptoSecretBoxOpen : (ciphertext : ManagedPtr) -> 
-                         (nonce : String) -> 
+                         (nonce : ManagedPtr) -> 
                          (key : ManagedPtr) -> IO (Maybe ManagedPtr)
 do_cryptoSecretBoxOpen c n k 
    = do p <- mkForeign (FFun "do_crypto_secretbox_open" 
-                       [FManagedPtr, FString, FManagedPtr] FPtr) c n k
+                       [FManagedPtr, FManagedPtr, FManagedPtr] FPtr) c n k
         if !(nullPtr p)
            then return Nothing
            else do boxlen <- mkForeign (FFun "getDecSize" [FPtr] FInt) p
@@ -104,24 +119,24 @@ do_getSecret kp = do p <- mkForeign (FFun "getSecret" [FPtr] FPtr) kp
                      return $ registerPtr p (len + 16)
 
 do_cryptoBox : (msg : String) -> 
-               (nonce : String) -> 
+               (nonce : ManagedPtr) -> 
                (pkey : ManagedPtr) -> 
                (skey : ManagedPtr) -> IO (Maybe ManagedPtr)
 do_cryptoBox m n pk sk
    = do p <- mkForeign (FFun "do_crypto_box" 
-                       [FString, FString, FManagedPtr, FManagedPtr] FPtr) m n pk sk
+                       [FString, FManagedPtr, FManagedPtr, FManagedPtr] FPtr) m n pk sk
         if !(nullPtr p)
            then return Nothing
            else do boxlen <- mkForeign (FFun "getEncSize" [FPtr] FInt) p
                    return $ Just (registerPtr p (boxlen + 16))
 
 do_cryptoBoxOpen : (ciphertext : ManagedPtr) -> 
-                   (nonce : String) -> 
+                   (nonce : ManagedPtr) -> 
                    (pkey : ManagedPtr) -> 
                    (skey : ManagedPtr) -> IO (Maybe ManagedPtr)
 do_cryptoBoxOpen c n pk sk 
    = do p <- mkForeign (FFun "do_crypto_box_open" 
-                       [FManagedPtr, FString, FManagedPtr, FManagedPtr] FPtr) c n pk sk
+                       [FManagedPtr, FManagedPtr, FManagedPtr, FManagedPtr] FPtr) c n pk sk
         if !(nullPtr p)
            then return Nothing
            else do boxlen <- mkForeign (FFun "getDecSize" [FPtr] FInt) p

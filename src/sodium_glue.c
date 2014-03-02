@@ -61,12 +61,30 @@ void setKeyIdx(Key* k, int i, int v) {
     k->key[i] = (char)v;
 }
 
-void freeKeyPair(KeyPair* k) {
-    free(k);
+Nonce* mkNonce(int len) {
+    Nonce* n = malloc(sizeof(Nonce)+len);
+    n->nonce = (unsigned char*)n + sizeof(Nonce);
+    n->nlen = len;
+
+    return n;
 }
 
-void freeKey(Key* k) {
-    free(k->key);
+Nonce* mkNonceFromString(char* nstr) {
+    int len = strlen(nstr);
+
+    Nonce* n = malloc(sizeof(Nonce)+len);
+    n->nonce = (unsigned char*)n + sizeof(Nonce);
+    memcpy(n->nonce, nstr, len+1);
+    n->nlen = len;
+
+    return n;
+}
+
+void setNonceIdx(Nonce* n, int i, int v) {
+    n->nonce[i] = (unsigned char)v;
+}
+
+void freeKeyPair(KeyPair* k) {
     free(k);
 }
 
@@ -78,7 +96,7 @@ void dumpKey(Key* k) {
     printf("\n");
 }
 
-Encrypted* do_crypto_secretbox(char* m, char* n, Key* key) {
+Encrypted* do_crypto_secretbox(char* m, Nonce* n, Key* key) {
     int mlen = strlen(m) + crypto_secretbox_ZEROBYTES;
 
     Encrypted* e = malloc(sizeof(Encrypted) + mlen + 1);
@@ -90,7 +108,7 @@ Encrypted* do_crypto_secretbox(char* m, char* n, Key* key) {
     strcpy(inmsg + crypto_secretbox_ZEROBYTES, m);
 
     int r = crypto_secretbox((unsigned char*)res, (unsigned char*)inmsg, mlen, 
-                     (unsigned char*)n, (unsigned char*)key->key);
+                     n->nonce, (unsigned char*)key->key);
 
     if (r == 0) {
         e->msg = res;
@@ -103,7 +121,7 @@ Encrypted* do_crypto_secretbox(char* m, char* n, Key* key) {
     }
 }
 
-Decrypted* do_crypto_secretbox_open(Encrypted* cin, char* n, Key* key) {
+Decrypted* do_crypto_secretbox_open(Encrypted* cin, Nonce* n, Key* key) {
     int mlen = cin->mlen;
 
     Decrypted* d = malloc(sizeof(Decrypted) + mlen+1);
@@ -113,7 +131,7 @@ Decrypted* do_crypto_secretbox_open(Encrypted* cin, char* n, Key* key) {
 
     int r = crypto_secretbox_open(
                          (unsigned char*)res, (unsigned char*)cin->msg, mlen, 
-                         (unsigned char*)n, (unsigned char*)key->key);
+                         n->nonce, (unsigned char*)key->key);
 
     if (r == 0) {
         d->msg = res;
@@ -126,7 +144,7 @@ Decrypted* do_crypto_secretbox_open(Encrypted* cin, char* n, Key* key) {
     }
 }
 
-Encrypted* do_crypto_box(char* m, char* n, Key* pkey, Key* skey) {
+Encrypted* do_crypto_box(char* m, Nonce* n, Key* pkey, Key* skey) {
     int mlen = strlen(m) + crypto_box_ZEROBYTES;
 
     Encrypted* e = malloc(sizeof(Encrypted) + mlen+1);
@@ -138,7 +156,7 @@ Encrypted* do_crypto_box(char* m, char* n, Key* pkey, Key* skey) {
     strcpy(inmsg + crypto_box_ZEROBYTES, m);
 
     int r = crypto_box((unsigned char*)res, (unsigned char*)inmsg, mlen, 
-                     (unsigned char*)n, 
+                     n->nonce, 
                      (unsigned char*)pkey->key, (unsigned char*)skey->key);
 
     if (r == 0) {
@@ -152,7 +170,7 @@ Encrypted* do_crypto_box(char* m, char* n, Key* pkey, Key* skey) {
     }
 }
 
-Decrypted* do_crypto_box_open(Encrypted* cin, char* n, Key* pkey, Key* skey) {
+Decrypted* do_crypto_box_open(Encrypted* cin, Nonce* n, Key* pkey, Key* skey) {
     int mlen = cin->mlen;
     Decrypted* d = malloc(sizeof(Decrypted) + mlen+1);
     char* res = (char*)d + sizeof(Decrypted);
@@ -162,7 +180,7 @@ Decrypted* do_crypto_box_open(Encrypted* cin, char* n, Key* pkey, Key* skey) {
     int r = crypto_box_open((unsigned char*)res, 
                      (unsigned char*)cin->msg, 
                      cin->mlen, 
-                     (unsigned char*)n, 
+                     n->nonce, 
                      (unsigned char*)pkey->key, (unsigned char*)skey->key);
 
     if (r == 0) {
@@ -182,16 +200,6 @@ char* getEnc(Encrypted* enc) {
 
 char* getDec(Decrypted* dec) {
     return (dec->msg + dec->padding);
-}
-
-void freeEnc(Encrypted* enc) {
-    free(enc->msg);
-    free(enc);
-}
-
-void freeDec(Decrypted* dec) {
-    free(dec->msg);
-    free(dec);
 }
 
 Encrypted* newBox(int len) {
